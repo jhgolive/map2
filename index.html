@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>실시간 맵/카카오 맵</title>
+<title>실시간 카카오맵</title>
 <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=472f378af49957df6636a87b97fb6fd6&libraries=services"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
@@ -112,7 +112,7 @@ function createDistanceDiv(container) {
         distanceDiv.style.fontFamily = 'sans-serif';
         distanceDiv.style.color = '#0066ff';
         distanceDiv.style.backgroundColor = 'rgba(255,255,255,0.8)';
-        distanceDiv.style.padding = '1px 2px'; // 고정, 가장 얇게
+        distanceDiv.style.padding = '1px 2px';
         distanceDiv.style.borderRadius = '0px';
         distanceDiv.style.zIndex = '9999';
         distanceDiv.style.display = 'block';
@@ -148,7 +148,7 @@ function refreshAddressText() {
     addressDiv.innerText = text;
 }
 
-// 거리 표시 km/m (단위 숨김 로직 없음)
+// 거리 표시 km/m
 function updateDistanceText(data) {
     if (!distanceDiv || !data.routes || data.routes.length === 0) return;
     distanceDiv.style.display = 'block';
@@ -160,7 +160,7 @@ function updateDistanceText(data) {
     distanceDiv.innerHTML = `${distanceText} <span id="distanceUnit">${unit}</span>`;
 }
 
-// 지도 크기에 따라 단위 표시/숨김 처리 (resize 전용)
+// 지도 크기에 따라 단위 표시/숨김 처리
 function updateDistanceUnitOnResize() {
     if (!distanceDiv) return;
     const container = document.getElementById("map");
@@ -254,7 +254,7 @@ window.onload = function() {
             map.relayout();
             map.setCenter(pos);
             refreshAddressText();
-            updateDistanceUnitOnResize(); // 추가
+            updateDistanceUnitOnResize();
         }
 
         updateAddress(pos);
@@ -268,16 +268,9 @@ window.onload = function() {
         }
     });
 
-    // 더블클릭 방지
-    let clickBlocked = false;
-    kakao.maps.event.addListener(map, 'dblclick', function(mouseEvent) {
-        clickBlocked = true;
-        setTimeout(() => clickBlocked = false, 300);
-    });
-
-    // 지도 클릭 → 목적지 마커 토글
+    // 지도 클릭 → 목적지 마커 토글 (싱글클릭만)
     kakao.maps.event.addListener(map, 'click', function(mouseEvent) {
-        if (clickBlocked) return;
+        if (mouseEvent.domEvent.detail > 1) return;
 
         const clickPos = mouseEvent.latLng;
         const destRef = ref(db, "location/destination");
@@ -335,6 +328,6 @@ body {
 </style>
 </head>
 <body>
-<div id="map"></div>
+2<div id="map"></div>
 </body>
 </html>
