@@ -25,7 +25,7 @@ let map, marker, addressDiv, distanceDiv;
 let destinationMarker, routeLine;
 let lastPosition = null;
 
-// 내 위치 마커 생성
+// 내 위치 마커 생성 (다이아몬드 모양)
 function createMarker(pos) {
     if (marker) marker.setMap(null);
 
@@ -53,7 +53,7 @@ function createMarker(pos) {
     marker.setMap(map);
 }
 
-// 목적지 마커 생성
+// 목적지 마커 생성 (다이아몬드)
 function createDestinationMarker(pos) {
     if (destinationMarker) destinationMarker.setMap(null);
 
@@ -112,7 +112,7 @@ function createDistanceDiv(container) {
         distanceDiv.style.fontFamily = 'sans-serif';
         distanceDiv.style.color = '#0066ff';
         distanceDiv.style.backgroundColor = 'rgba(255,255,255,0.8)';
-        distanceDiv.style.padding = '1px 2px';
+        distanceDiv.style.padding = '1px 2px'; // 고정, 가장 얇게
         distanceDiv.style.borderRadius = '0px';
         distanceDiv.style.zIndex = '9999';
         distanceDiv.style.display = 'block';
@@ -148,7 +148,7 @@ function refreshAddressText() {
     addressDiv.innerText = text;
 }
 
-// 거리 표시 km/m
+// 거리 표시 km/m (단위 숨김 로직 없음)
 function updateDistanceText(data) {
     if (!distanceDiv || !data.routes || data.routes.length === 0) return;
     distanceDiv.style.display = 'block';
@@ -160,7 +160,7 @@ function updateDistanceText(data) {
     distanceDiv.innerHTML = `${distanceText} <span id="distanceUnit">${unit}</span>`;
 }
 
-// 지도 크기에 따라 단위 표시/숨김 처리
+// 지도 크기에 따라 단위 표시/숨김 처리 (resize 전용)
 function updateDistanceUnitOnResize() {
     if (!distanceDiv) return;
     const container = document.getElementById("map");
@@ -268,25 +268,30 @@ window.onload = function() {
         }
     });
 
-    // 더블클릭 시 목적지 토글만 막기 위한 플래그
-    let destinationClickBlocked = false;
-    kakao.maps.event.addListener(map, 'dblclick', function(mouseEvent) {
-        destinationClickBlocked = true;
-        setTimeout(() => destinationClickBlocked = false, 300);
+    // 클릭/더블클릭 처리
+    let clickTimeout = null;
+
+    kakao.maps.event.addListener(map, 'click', function(mouseEvent) {
+        if (clickTimeout) return; // 이미 클릭 지연 중이면 무시
+
+        clickTimeout = setTimeout(() => {
+            clickTimeout = null; // 초기화
+            const clickPos = mouseEvent.latLng;
+            const destRef = ref(db, "location/destination");
+
+            if (destinationMarker) {
+                set(destRef, null);
+                if (distanceDiv) distanceDiv.style.display = 'none';
+            } else {
+                set(destRef, { lat: clickPos.getLat(), lng: clickPos.getLng() });
+            }
+        }, 250); // 더블클릭 최대 시간보다 약간 큰 값
     });
 
-    // 지도 클릭 → 목적지 마커 토글
-    kakao.maps.event.addListener(map, 'click', function(mouseEvent) {
-        if (destinationClickBlocked) return;
-
-        const clickPos = mouseEvent.latLng;
-        const destRef = ref(db, "location/destination");
-
-        if (destinationMarker) {
-            set(destRef, null);
-            if (distanceDiv) distanceDiv.style.display = 'none';
-        } else {
-            set(destRef, { lat: clickPos.getLat(), lng: clickPos.getLng() });
+    kakao.maps.event.addListener(map, 'dblclick', function(mouseEvent) {
+        if (clickTimeout) {
+            clearTimeout(clickTimeout); // 클릭 이벤트 취소
+            clickTimeout = null;
         }
     });
 
@@ -335,6 +340,6 @@ body {
 </style>
 </head>
 <body>
-3<div id="map"></div>
+5<div id="map"></div>
 </body>
 </html>
