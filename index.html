@@ -221,16 +221,22 @@ async function drawRealRoute(start, end) {
 
 // 좌표 사이 거리
 function getDistance(pos1, pos2) {
-    // pos1, pos2가 kakao.maps.LatLng인지 확인
-    const toLatLng = (pos) => {
-        if (pos instanceof kakao.maps.LatLng) return pos;
-        return new kakao.maps.LatLng(pos.lat, pos.lng);
-    }
+    // 좌표가 LatLng 객체이면 lat/lng 추출
+    const lat1 = pos1.lat !== undefined ? pos1.lat : pos1.getLat();
+    const lng1 = pos1.lng !== undefined ? pos1.lng : pos1.getLng();
+    const lat2 = pos2.lat !== undefined ? pos2.lat : pos2.getLat();
+    const lng2 = pos2.lng !== undefined ? pos2.lng : pos2.getLng();
 
-    const p1 = toLatLng(pos1);
-    const p2 = toLatLng(pos2);
+    const R = 6371000; // 지구 반경 (m)
+    const toRad = (deg) => deg * Math.PI / 180;
 
-    return p1.distanceTo(p2); // m 단위
+    const dLat = toRad(lat2 - lat1);
+    const dLng = toRad(lng2 - lng1);
+
+    const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng/2)**2;
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c; // 미터 단위 반환
 }
 
 window.onload = function() {
@@ -366,9 +372,10 @@ body {
 </style>
 </head>
 <body>
-4<div id="map"></div>
+<div id="map"></div>
 </body>
 </html>
+
 
 
 
