@@ -221,7 +221,8 @@ async function drawRealRoute(start, end) {
 
 // 좌표 사이 거리
 function getDistance(pos1, pos2) {
-    return kakao.maps.LatLng.prototype.distance.call(pos1, pos2);
+    // Kakao Maps LatLng 객체는 distanceTo 메서드 제공
+    return pos1.distanceTo(pos2); // 미터 단위 반환
 }
 
 window.onload = function() {
@@ -360,3 +361,4 @@ body {
 <div id="map"></div>
 </body>
 </html>
+
