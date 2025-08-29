@@ -21,15 +21,15 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-let map;                  // Kakao Map (타일 전용)
-let overlayRoot;          // 오버레이 루트 (#overlay)
-let svg;                  // 경로용 SVG
-let myMarkerEl = null;    // 내 위치 마커(HTML)
-let destMarkerEl = null;  // 목적지 마커(HTML)
+let map;                  
+let overlayRoot;          
+let svg;                  
+let myMarkerEl = null;    
+let destMarkerEl = null;  
 let addressDiv, distanceDiv;
 
 let lastPosition = null;
-let currentPathLatLngs = []; // 경로 원본 좌표(lat,lng 배열)
+let currentPathLatLngs = []; 
 let currentAddress = {city:'', district:'', neighborhood:''};
 
 const geocoder = new kakao.maps.services.Geocoder();
@@ -67,7 +67,7 @@ function createOverlayRoot(container) {
   distanceDiv.style.display = 'none';
   overlayRoot.appendChild(distanceDiv);
 
-  // 경로용 SVG (오버레이 최하단)
+  // 경로용 SVG
   svg = document.createElementNS("http://www.w3.org/2000/svg","svg");
   svg.setAttribute('width','100%');
   svg.setAttribute('height','100%');
@@ -107,7 +107,7 @@ function createDiamond(color) {
   containerDiv.style.position = 'absolute';
   containerDiv.style.width = '30px';
   containerDiv.style.height = '40px';
-  containerDiv.style.transform = 'translate(-50%, -100%)'; // 아래끝이 기준점
+  containerDiv.style.transform = 'translate(-50%, -100%)';
   containerDiv.style.zIndex = '2';
   containerDiv.style.pointerEvents = 'none';
 
@@ -145,7 +145,7 @@ function placeMarker(el, latlng) {
 function updateDistanceTextByData(data) {
   if (!distanceDiv || !data?.routes?.length) return;
   distanceDiv.style.display = 'block';
-  const dist = data.routes[0].summary.distance; // meters
+  const dist = data.routes[0].summary.distance;
   const distanceText = dist >= 1000 ? (dist/1000).toFixed(2) : dist;
   const unit = dist >= 1000 ? 'km' : 'm';
   distanceDiv.innerHTML = `${distanceText} <span id="distanceUnit">${unit}</span>`;
@@ -175,7 +175,6 @@ async function drawRealRoute(start, end) {
 
     updateDistanceTextByData(data);
 
-    // 경로 좌표(lat,lng) 수집
     const latlngs = [];
     const sections = data.routes[0].sections || [];
     sections.forEach(sec => {
@@ -188,14 +187,13 @@ async function drawRealRoute(start, end) {
       });
     });
     currentPathLatLngs = latlngs;
-    renderPath(); // 현재 줌/센터 기준으로 픽셀 경로 다시 그림
+    renderPath();
   } catch (e) {
     console.error("경로 가져오기 실패:", e);
   }
 }
 
 function renderPath() {
-  // SVG 초기화
   while (svg.firstChild) svg.removeChild(svg.firstChild);
   if (!currentPathLatLngs.length) return;
 
@@ -231,29 +229,24 @@ function getDistance(pos1, pos2) {
 
 window.onload = function() {
   const wrap = document.getElementById('wrap');
-  const mapDiv = document.getElementById('map');      // 지도(타일) 전용
-  createOverlayRoot(wrap);                             // 오버레이 전용
+  const mapDiv = document.getElementById('map');      
+  createOverlayRoot(wrap);                             
 
   map = new kakao.maps.Map(mapDiv, {
     center: new kakao.maps.LatLng(37.5665, 126.9780),
     level: 4
   });
 
-  // 지도 이벤트마다 오버레이 재배치
   ['idle','center_changed','zoom_changed'].forEach(ev => {
     kakao.maps.event.addListener(map, ev, () => {
-      // 내 마커/목적지 마커 위치 다시 잡기
       if (myMarkerEl && myMarkerEl._latlng) placeMarker(myMarkerEl, myMarkerEl._latlng);
       if (destMarkerEl && destMarkerEl._latlng) placeMarker(destMarkerEl, destMarkerEl._latlng);
-      // 경로 다시 그리기
       renderPath();
-      // 주소/단위 리사이징 반영
       refreshAddressText();
       updateDistanceUnitOnResize();
     });
   });
 
-  // 내 위치 실시간 갱신
   const locRef = ref(db, "location/current");
   onValue(locRef, (snapshot) => {
     const data = snapshot.val();
@@ -261,22 +254,24 @@ window.onload = function() {
     const pos = new kakao.maps.LatLng(data.lat, data.lng);
 
     ensureMyMarker();
-    myMarkerEl._latlng = pos;         // 현재 좌표 보관
-    placeMarker(myMarkerEl, pos);     // 픽셀에 배치
-    map.setCenter(pos);
+    myMarkerEl._latlng = pos;
+    placeMarker(myMarkerEl, pos);
 
-    // 외곽 스타일/크기 제어는 랩(#wrap)에 적용
-    if (data.level !== undefined) map.setLevel(data.level);
-    if (data.borderRadius !== undefined) wrap.style.borderRadius = data.borderRadius + 'px';
-    if (data.opacity !== undefined) wrap.style.opacity = data.opacity;
+    // 센터 맞추기
     if (data.mapSize !== undefined) {
       wrap.style.width = data.mapSize + 'px';
       wrap.style.height = data.mapSize + 'px';
-      kakao.maps.event.trigger(map, 'resize'); // 카카오맵 리레이아웃
-      map.setCenter(pos);
+      kakao.maps.event.trigger(map, 'resize');
+      setTimeout(() => { map.setCenter(pos); }, 100);
       refreshAddressText();
       updateDistanceUnitOnResize();
+    } else {
+      map.setCenter(pos);
     }
+
+    if (data.level !== undefined) map.setLevel(data.level);
+    if (data.borderRadius !== undefined) wrap.style.borderRadius = data.borderRadius + 'px';
+    if (data.opacity !== undefined) wrap.style.opacity = data.opacity;
 
     updateAddress(pos);
 
@@ -289,22 +284,18 @@ window.onload = function() {
     }
   });
 
-  // ✅ 지도 모드 필터 (지도 레이어(#map)에만 적용)
   const modeRef = ref(db, "location/settings/mode");
   onValue(modeRef, (snapshot) => {
     const mode = snapshot.val();
     if (mode === 0) {
       mapDiv.style.filter = "none";
     } else if (mode === 1) {
-      // 중칼라 느낌
       mapDiv.style.filter = "invert(100%) hue-rotate(180deg) saturate(60%) brightness(80%) contrast(90%)";
     } else if (mode === 2) {
-      // 어두운 흑백
       mapDiv.style.filter = "invert(100%) grayscale(100%) brightness(85%) contrast(95%)";
     }
   });
 
-  // 클릭/더블클릭 처리 (카카오 지도에만 이벤트 걸림)
   let clickTimeout = null;
   kakao.maps.event.addListener(map, 'click', function(mouseEvent) {
     if (clickTimeout) return;
@@ -327,7 +318,6 @@ window.onload = function() {
     if (clickTimeout) { clearTimeout(clickTimeout); clickTimeout = null; }
   });
 
-  // 목적지 실시간 갱신
   const destRef = ref(db, "location/destination");
   onValue(destRef, (snapshot) => {
     const dest = snapshot.val();
@@ -351,7 +341,6 @@ window.onload = function() {
     lastPosition = myMarkerEl ? myMarkerEl._latlng : null;
   });
 
-  // 윈도우 리사이즈
   window.addEventListener('resize', () => {
     kakao.maps.event.trigger(map, 'resize');
     refreshAddressText();
@@ -361,26 +350,23 @@ window.onload = function() {
 </script>
 <style>
   html, body { margin:0; padding:0; height:100%; }
-  /* 랩: 지도 + 오버레이를 포개기 위한 기준 레이어 */
   #wrap {
     position: absolute; top: 0; right: 0;
     width: 200px; height: 200px;
     border: 0; border-radius: 0px;
-    overflow: hidden;  /* 내부 레이어가 튀어나오지 않게 */
+    overflow: hidden;
   }
-  /* 지도(타일) 전용 레이어: 여기만 filter 적용 */
   #map {
     position: absolute; inset: 0;
     width: 100%; height: 100%;
-    z-index: 0;             /* 아래쪽 */
+    z-index: 0;
     will-change: filter;
   }
-  /* 오버레이 전용 레이어: 필터 영향 없음 */
   #overlay {
     position: absolute; inset: 0;
     width: 100%; height: 100%;
-    z-index: 1;             /* 지도 위 */
-    pointer-events: none;   /* 클릭은 지도에만 전달 */
+    z-index: 1;
+    pointer-events: none;
   }
 </style>
 </head>
