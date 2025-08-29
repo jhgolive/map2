@@ -286,11 +286,14 @@ window.onload = function() {
   onValue(modeRef, (snapshot) => {
     const mode = snapshot.val();
     if (mode === 0) {
+      map.setMapTypeId(kakao.maps.MapTypeId.ROADMAP); // 일반 지도
       mapDiv.style.filter = "none";
     } else if (mode === 1) {
+      map.setMapTypeId(kakao.maps.MapTypeId.ROADMAP); // 일반 지도
       mapDiv.style.filter = "invert(100%) grayscale(100%) brightness(85%) contrast(95%)";
     } else if (mode === 2) {
-      mapDiv.style.filter = "invert(100%) hue-rotate(180deg) saturate(60%) brightness(80%) contrast(90%)";
+      map.setMapTypeId(kakao.maps.MapTypeId.HYBRID); // 위성+도로 라벨
+      mapDiv.style.filter = "none"; // HYBRID에는 필터 제거
     }
   });
 
@@ -375,6 +378,7 @@ window.onload = function() {
   </div>
 </body>
 </html>
+
 
 
 
