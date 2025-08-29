@@ -2,304 +2,392 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>실시간 카카오맵</title>
+<title>실시간 카카오맵 (지도만 필터, 오버레이 분리)</title>
 <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=472f378af49957df6636a87b97fb6fd6&libraries=services"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
 import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
 
-// Firebase 초기화
 const firebaseConfig = {
-    apiKey: "AIzaSyAQGtOEcxFxl9FV7NASLgxLDc23u2vzS_0",
-    authDomain: "mygps-11798.firebaseapp.com",
-    databaseURL: "https://mygps-11798-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "mygps-11798",
-    storageBucket: "mygps-11798.firebasestorage.app",
-    messagingSenderId: "271371741627",
-    appId: "1:271371741627:web:642901f43c5ad57d80bc9e"
+  apiKey: "AIzaSyAQGtOEcxFxl9FV7NASLgxLDc23u2vzS_0",
+  authDomain: "mygps-11798.firebaseapp.com",
+  databaseURL: "https://mygps-11798-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "mygps-11798",
+  storageBucket: "mygps-11798.firebasestorage.app",
+  messagingSenderId: "271371741627",
+  appId: "1:271371741627:web:642901f43c5ad57d80bc9e"
 };
+
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-let map, overlayDiv;
-let markerDiv, destinationMarkerDiv, routeSVG;
+let map;                  // Kakao Map (타일 전용)
+let overlayRoot;          // 오버레이 루트 (#overlay)
+let svg;                  // 경로용 SVG
+let myMarkerEl = null;    // 내 위치 마커(HTML)
+let destMarkerEl = null;  // 목적지 마커(HTML)
 let addressDiv, distanceDiv;
+
 let lastPosition = null;
+let currentPathLatLngs = []; // 경로 원본 좌표(lat,lng 배열)
+let currentAddress = {city:'', district:'', neighborhood:''};
 
-// --- 지도, 오버레이 초기화 ---
-function initOverlay(container){
-    overlayDiv = document.createElement('div');
-    overlayDiv.style.position = 'absolute';
-    overlayDiv.style.top = '0';
-    overlayDiv.style.left = '0';
-    overlayDiv.style.width = '100%';
-    overlayDiv.style.height = '100%';
-    overlayDiv.style.pointerEvents = 'none';
-    container.appendChild(overlayDiv);
-}
-
-// --- 주소 표시 ---
-function createAddressDiv(container){
-    addressDiv = document.createElement('div');
-    addressDiv.style.position='absolute';
-    addressDiv.style.top='0px';
-    addressDiv.style.left='50%';
-    addressDiv.style.transform='translateX(-50%)';
-    addressDiv.style.fontSize='20px';
-    addressDiv.style.fontWeight='900';
-    addressDiv.style.fontFamily='sans-serif';
-    addressDiv.style.color='#000';
-    addressDiv.style.zIndex='9999';
-    addressDiv.style.whiteSpace='nowrap';
-    container.appendChild(addressDiv);
-}
-function refreshAddressText(currentAddress){
-    if(!addressDiv) return;
-    const mapSize = document.getElementById("map").offsetWidth;
-    let text;
-    if(mapSize>430) text=`${currentAddress.city} ${currentAddress.district} ${currentAddress.neighborhood}`;
-    else if(mapSize>330) text=`${currentAddress.district} ${currentAddress.neighborhood}`;
-    else text=`${currentAddress.neighborhood}`;
-    addressDiv.innerText=text;
-}
-
-// --- 거리 표시 ---
-function createDistanceDiv(container){
-    distanceDiv=document.createElement('div');
-    distanceDiv.style.position='absolute';
-    distanceDiv.style.bottom='0px';
-    distanceDiv.style.left='50%';
-    distanceDiv.style.transform='translateX(-50%)';
-    distanceDiv.style.fontSize='16px';
-    distanceDiv.style.fontWeight='bold';
-    distanceDiv.style.fontFamily='sans-serif';
-    distanceDiv.style.color='#0066ff';
-    distanceDiv.style.backgroundColor='rgba(255,255,255,0.8)';
-    distanceDiv.style.padding='1px 2px';
-    distanceDiv.style.borderRadius='0px';
-    distanceDiv.style.zIndex='9999';
-    container.appendChild(distanceDiv);
-}
-function updateDistanceText(dist){
-    if(!distanceDiv) return;
-    distanceDiv.style.display='block';
-    const distanceText=dist>=1000?(dist/1000).toFixed(2):dist;
-    const unit=dist>=1000?'km':'m';
-    distanceDiv.innerHTML=`${distanceText} <span id="distanceUnit">${unit}</span>`;
-}
-function updateDistanceUnitOnResize(){
-    if(!distanceDiv) return;
-    const mapSize=document.getElementById('map').offsetWidth;
-    const unitSpan=document.getElementById('distanceUnit');
-    if(!unitSpan) return;
-    unitSpan.style.display = mapSize<200?'none':'inline';
-}
-
-// --- 좌표 → 주소 ---
 const geocoder = new kakao.maps.services.Geocoder();
-let currentAddress={city:'',district:'',neighborhood:''};
-function updateAddress(latlng){
-    geocoder.coord2Address(latlng.getLng(),latlng.getLat(),(result,status)=>{
-        if(status===kakao.maps.services.Status.OK){
-            const region=result[0].address;
-            currentAddress.city=region.region_1depth_name||'';
-            currentAddress.district=region.region_2depth_name||'';
-            currentAddress.neighborhood=region.region_3depth_name||'';
-            refreshAddressText(currentAddress);
-        }else{
-            if(addressDiv) addressDiv.innerText='주소를 가져올 수 없음';
-        }
-    });
+
+function createOverlayRoot(container) {
+  overlayRoot = document.getElementById('overlay');
+  // 주소 표시
+  addressDiv = document.createElement('div');
+  addressDiv.style.position = 'absolute';
+  addressDiv.style.top = '0px';
+  addressDiv.style.left = '50%';
+  addressDiv.style.transform = 'translateX(-50%)';
+  addressDiv.style.fontSize = '20px';
+  addressDiv.style.fontWeight = '900';
+  addressDiv.style.fontFamily = 'sans-serif';
+  addressDiv.style.color = '#000';
+  addressDiv.style.zIndex = '3';
+  addressDiv.style.whiteSpace = 'nowrap';
+  overlayRoot.appendChild(addressDiv);
+
+  // 거리 표시
+  distanceDiv = document.createElement('div');
+  distanceDiv.style.position = 'absolute';
+  distanceDiv.style.bottom = '0px';
+  distanceDiv.style.left = '50%';
+  distanceDiv.style.transform = 'translateX(-50%)';
+  distanceDiv.style.fontSize = '16px';
+  distanceDiv.style.fontWeight = 'bold';
+  distanceDiv.style.fontFamily = 'sans-serif';
+  distanceDiv.style.color = '#0066ff';
+  distanceDiv.style.backgroundColor = 'rgba(255,255,255,0.8)';
+  distanceDiv.style.padding = '1px 2px';
+  distanceDiv.style.borderRadius = '0px';
+  distanceDiv.style.zIndex = '3';
+  distanceDiv.style.display = 'none';
+  overlayRoot.appendChild(distanceDiv);
+
+  // 경로용 SVG (오버레이 최하단)
+  svg = document.createElementNS("http://www.w3.org/2000/svg","svg");
+  svg.setAttribute('width','100%');
+  svg.setAttribute('height','100%');
+  svg.style.position = 'absolute';
+  svg.style.inset = '0';
+  svg.style.zIndex = '1';
+  overlayRoot.appendChild(svg);
 }
 
-// --- 마커 생성 ---
-function createMarker(pos,color='red'){
-    if(!markerDiv){
-        markerDiv=document.createElement('div');
-        markerDiv.style.position='absolute';
-        markerDiv.style.width='30px';
-        markerDiv.style.height='40px';
-        markerDiv.style.transform='translateX(-50%)';
-        const diamond=document.createElement('div');
-        diamond.style.width='30px';
-        diamond.style.height='40px';
-        diamond.style.backgroundColor=color;
-        diamond.style.clipPath='polygon(40% 30%,60% 30%,85% 45%,50% 100%,15% 45%)';
-        markerDiv.appendChild(diamond);
-        overlayDiv.appendChild(markerDiv);
+function refreshAddressText() {
+  if (!addressDiv) return;
+  const container = document.getElementById("wrap");
+  const w = container.offsetWidth;
+  let text;
+  if (w > 430) text = `${currentAddress.city} ${currentAddress.district} ${currentAddress.neighborhood}`;
+  else if (w > 330) text = `${currentAddress.district} ${currentAddress.neighborhood}`;
+  else text = `${currentAddress.neighborhood}`;
+  addressDiv.innerText = text;
+}
+
+function updateAddress(latlng) {
+  geocoder.coord2Address(latlng.getLng(), latlng.getLat(), (result, status) => {
+    if (status === kakao.maps.services.Status.OK) {
+      const region = result[0].address;
+      currentAddress.city = region.region_1depth_name || '';
+      currentAddress.district = region.region_2depth_name || '';
+      currentAddress.neighborhood = region.region_3depth_name || '';
+      refreshAddressText();
+    } else {
+      if (addressDiv) addressDiv.innerText = '주소를 가져올 수 없음';
     }
-    const pixel=map.getProjection().coordToPoint(pos);
-    markerDiv.style.left=`${pixel.x}px`;
-    markerDiv.style.top=`${pixel.y}px`;
+  });
 }
 
-// --- 목적지 마커 ---
-function createDestinationMarker(pos){
-    if(!destinationMarkerDiv){
-        destinationMarkerDiv=document.createElement('div');
-        destinationMarkerDiv.style.position='absolute';
-        destinationMarkerDiv.style.width='30px';
-        destinationMarkerDiv.style.height='40px';
-        destinationMarkerDiv.style.transform='translateX(-50%)';
-        const diamond=document.createElement('div');
-        diamond.style.width='30px';
-        diamond.style.height='40px';
-        diamond.style.backgroundColor='blue';
-        diamond.style.clipPath='polygon(40% 30%,60% 30%,85% 45%,50% 100%,15% 45%)';
-        destinationMarkerDiv.appendChild(diamond);
-        overlayDiv.appendChild(destinationMarkerDiv);
+function createDiamond(color) {
+  const containerDiv = document.createElement('div');
+  containerDiv.style.position = 'absolute';
+  containerDiv.style.width = '30px';
+  containerDiv.style.height = '40px';
+  containerDiv.style.transform = 'translate(-50%, -100%)'; // 아래끝이 기준점
+  containerDiv.style.zIndex = '2';
+  containerDiv.style.pointerEvents = 'none';
+
+  const diamondDiv = document.createElement('div');
+  diamondDiv.style.width = '30px';
+  diamondDiv.style.height = '40px';
+  diamondDiv.style.backgroundColor = color;
+  diamondDiv.style.clipPath = 'polygon(40% 30%, 60% 30%, 85% 45%, 50% 100%, 15% 45%)';
+
+  containerDiv.appendChild(diamondDiv);
+  return containerDiv;
+}
+
+function ensureMyMarker() {
+  if (!myMarkerEl) {
+    myMarkerEl = createDiamond('red');
+    overlayRoot.appendChild(myMarkerEl);
+  }
+}
+
+function ensureDestMarker() {
+  if (!destMarkerEl) {
+    destMarkerEl = createDiamond('blue');
+    overlayRoot.appendChild(destMarkerEl);
+  }
+}
+
+function placeMarker(el, latlng) {
+  const proj = map.getProjection();
+  const pt = proj.containerPointFromCoords(latlng);
+  el.style.left = `${pt.x}px`;
+  el.style.top  = `${pt.y}px`;
+}
+
+function updateDistanceTextByData(data) {
+  if (!distanceDiv || !data?.routes?.length) return;
+  distanceDiv.style.display = 'block';
+  const dist = data.routes[0].summary.distance; // meters
+  const distanceText = dist >= 1000 ? (dist/1000).toFixed(2) : dist;
+  const unit = dist >= 1000 ? 'km' : 'm';
+  distanceDiv.innerHTML = `${distanceText} <span id="distanceUnit">${unit}</span>`;
+}
+
+function updateDistanceUnitOnResize() {
+  if (!distanceDiv) return;
+  const container = document.getElementById("wrap");
+  const w = container.offsetWidth;
+  const unitSpan = document.getElementById('distanceUnit');
+  if (!unitSpan) return;
+  unitSpan.style.display = (w < 200) ? 'none' : 'inline';
+}
+
+async function fetchRoute(start, end) {
+  const REST_KEY = "bac1f5ced0d30c96b782458d968713fe";
+  const url = `https://apis-navi.kakaomobility.com/v1/directions?origin=${start.getLng()},${start.getLat()}&destination=${end.getLng()},${end.getLat()}&priority=RECOMMEND`;
+  const res = await fetch(url, { method:"GET", headers:{ Authorization:`KakaoAK ${REST_KEY}` }});
+  return await res.json();
+}
+
+async function drawRealRoute(start, end) {
+  if (!start || !end) return;
+  try {
+    const data = await fetchRoute(start, end);
+    if (!data.routes?.length) return;
+
+    updateDistanceTextByData(data);
+
+    // 경로 좌표(lat,lng) 수집
+    const latlngs = [];
+    const sections = data.routes[0].sections || [];
+    sections.forEach(sec => {
+      (sec.roads || []).forEach(road => {
+        for (let i = 0; i < road.vertexes.length; i += 2) {
+          const lng = road.vertexes[i];
+          const lat = road.vertexes[i + 1];
+          latlngs.push(new kakao.maps.LatLng(lat, lng));
+        }
+      });
+    });
+    currentPathLatLngs = latlngs;
+    renderPath(); // 현재 줌/센터 기준으로 픽셀 경로 다시 그림
+  } catch (e) {
+    console.error("경로 가져오기 실패:", e);
+  }
+}
+
+function renderPath() {
+  // SVG 초기화
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+  if (!currentPathLatLngs.length) return;
+
+  const proj = map.getProjection();
+  const pointsAttr = currentPathLatLngs.map(ll => {
+    const p = proj.containerPointFromCoords(ll);
+    return `${p.x},${p.y}`;
+  }).join(' ');
+
+  const poly = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+  poly.setAttribute('points', pointsAttr);
+  poly.setAttribute('fill', 'none');
+  poly.setAttribute('stroke', '#0066ff');
+  poly.setAttribute('stroke-width', '5');
+  poly.setAttribute('stroke-opacity', '0.8');
+  svg.appendChild(poly);
+}
+
+function getDistance(pos1, pos2) {
+  const lat1 = pos1.lat !== undefined ? pos1.lat : pos1.getLat();
+  const lng1 = pos1.lng !== undefined ? pos1.lng : pos1.getLng();
+  const lat2 = pos2.lat !== undefined ? pos2.lat : pos2.getLat();
+  const lng2 = pos2.lng !== undefined ? pos2.lng : pos2.getLng();
+
+  const R = 6371000;
+  const toRad = d => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng/2)**2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+window.onload = function() {
+  const wrap = document.getElementById('wrap');
+  const mapDiv = document.getElementById('map');      // 지도(타일) 전용
+  createOverlayRoot(wrap);                             // 오버레이 전용
+
+  map = new kakao.maps.Map(mapDiv, {
+    center: new kakao.maps.LatLng(37.5665, 126.9780),
+    level: 4
+  });
+
+  // 지도 이벤트마다 오버레이 재배치
+  ['idle','center_changed','zoom_changed'].forEach(ev => {
+    kakao.maps.event.addListener(map, ev, () => {
+      // 내 마커/목적지 마커 위치 다시 잡기
+      if (myMarkerEl && myMarkerEl._latlng) placeMarker(myMarkerEl, myMarkerEl._latlng);
+      if (destMarkerEl && destMarkerEl._latlng) placeMarker(destMarkerEl, destMarkerEl._latlng);
+      // 경로 다시 그리기
+      renderPath();
+      // 주소/단위 리사이징 반영
+      refreshAddressText();
+      updateDistanceUnitOnResize();
+    });
+  });
+
+  // 내 위치 실시간 갱신
+  const locRef = ref(db, "location/current");
+  onValue(locRef, (snapshot) => {
+    const data = snapshot.val();
+    if (!data) return;
+    const pos = new kakao.maps.LatLng(data.lat, data.lng);
+
+    ensureMyMarker();
+    myMarkerEl._latlng = pos;         // 현재 좌표 보관
+    placeMarker(myMarkerEl, pos);     // 픽셀에 배치
+    map.setCenter(pos);
+
+    // 외곽 스타일/크기 제어는 랩(#wrap)에 적용
+    if (data.level !== undefined) map.setLevel(data.level);
+    if (data.borderRadius !== undefined) wrap.style.borderRadius = data.borderRadius + 'px';
+    if (data.opacity !== undefined) wrap.style.opacity = data.opacity;
+    if (data.mapSize !== undefined) {
+      wrap.style.width = data.mapSize + 'px';
+      wrap.style.height = data.mapSize + 'px';
+      kakao.maps.event.trigger(map, 'resize'); // 카카오맵 리레이아웃
+      map.setCenter(pos);
+      refreshAddressText();
+      updateDistanceUnitOnResize();
     }
-    const pixel=map.getProjection().coordToPoint(pos);
-    destinationMarkerDiv.style.left=`${pixel.x}px`;
-    destinationMarkerDiv.style.top=`${pixel.y}px`;
-}
 
-// --- Polyline ---
-function drawPolyline(path){
-    if(routeSVG) overlayDiv.removeChild(routeSVG);
-    const svgNS="http://www.w3.org/2000/svg";
-    const svg=document.createElementNS(svgNS,'svg');
-    svg.style.position='absolute';
-    svg.style.left='0';
-    svg.style.top='0';
-    svg.style.width='100%';
-    svg.style.height='100%';
-    svg.style.pointerEvents='none';
-    const polyline=document.createElementNS(svgNS,'polyline');
-    const points=path.map(p=>{
-        const pixel=map.getProjection().coordToPoint(p);
-        return `${pixel.x},${pixel.y}`;
-    }).join(' ');
-    polyline.setAttribute('points',points);
-    polyline.setAttribute('stroke','#0066ff');
-    polyline.setAttribute('stroke-width','5');
-    polyline.setAttribute('fill','none');
-    svg.appendChild(polyline);
-    overlayDiv.appendChild(svg);
-    routeSVG=svg;
-}
+    updateAddress(pos);
 
-// --- 좌표 거리 계산 ---
-function getDistance(pos1,pos2){
-    const lat1=pos1.getLat(), lng1=pos1.getLng();
-    const lat2=pos2.getLat(), lng2=pos2.getLng();
-    const R=6371000;
-    const toRad=deg=>deg*Math.PI/180;
-    const dLat=toRad(lat2-lat1);
-    const dLng=toRad(lng2-lng1);
-    const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
-    const c=2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
-    return R*c;
-}
+    if (destMarkerEl && destMarkerEl._latlng) {
+      const destPos = destMarkerEl._latlng;
+      if (!lastPosition || getDistance(pos, lastPosition) > 5) {
+        drawRealRoute(pos, destPos);
+        lastPosition = pos;
+      }
+    }
+  });
 
-// --- Kakao 길찾기 ---
-async function fetchRoute(start,end){
-    const REST_KEY="bac1f5ced0d30c96b782458d968713fe";
-    const url=`https://apis-navi.kakaomobility.com/v1/directions?origin=${start.getLng()},${start.getLat()}&destination=${end.getLng()},${end.getLat()}&priority=RECOMMEND`;
-    const response=await fetch(url,{method:'GET',headers:{Authorization:`KakaoAK ${REST_KEY}`}});
-    const data=await response.json();
-    return data;
-}
-async function drawRealRoute(start,end){
-    if(!start||!end) return;
-    try{
-        const data=await fetchRoute(start,end);
-        if(!data.routes||data.routes.length===0) return;
-        updateDistanceText(data.routes[0].summary.distance);
-        const path=[];
-        data.routes[0].sections.forEach(sec=>{
-            sec.roads.forEach(road=>{
-                for(let i=0;i<road.vertexes.length;i+=2){
-                    const lng=road.vertexes[i], lat=road.vertexes[i+1];
-                    path.push(new kakao.maps.LatLng(lat,lng));
-                }
-            });
-        });
-        drawPolyline(path);
-    }catch(e){console.error(e);}
-}
+  // ✅ 지도 모드 필터 (지도 레이어(#map)에만 적용)
+  const modeRef = ref(db, "location/settings/mode");
+  onValue(modeRef, (snapshot) => {
+    const mode = snapshot.val();
+    if (mode === 0) {
+      mapDiv.style.filter = "none";
+    } else if (mode === 1) {
+      // 중칼라 느낌
+      mapDiv.style.filter = "invert(100%) hue-rotate(180deg) saturate(60%) brightness(80%) contrast(90%)";
+    } else if (mode === 2) {
+      // 어두운 흑백
+      mapDiv.style.filter = "invert(100%) grayscale(100%) brightness(85%) contrast(95%)";
+    }
+  });
 
-// --- window.onload ---
-window.onload=function(){
-    const mapContainer=document.getElementById('map');
-    initOverlay(mapContainer);
-    createAddressDiv(mapContainer);
-    createDistanceDiv(mapContainer);
+  // 클릭/더블클릭 처리 (카카오 지도에만 이벤트 걸림)
+  let clickTimeout = null;
+  kakao.maps.event.addListener(map, 'click', function(mouseEvent) {
+    if (clickTimeout) return;
+    clickTimeout = setTimeout(() => {
+      clickTimeout = null;
+      const clickPos = mouseEvent.latLng;
+      const destRef = ref(db, "location/destination");
 
-    map=new kakao.maps.Map(mapContainer,{center:new kakao.maps.LatLng(37.5665,126.9780),level:4});
+      if (destMarkerEl) {
+        set(destRef, null);
+        currentPathLatLngs = [];
+        renderPath();
+        distanceDiv.style.display = 'none';
+      } else {
+        set(destRef, { lat: clickPos.getLat(), lng: clickPos.getLng() });
+      }
+    }, 250);
+  });
+  kakao.maps.event.addListener(map, 'dblclick', function() {
+    if (clickTimeout) { clearTimeout(clickTimeout); clickTimeout = null; }
+  });
 
-    // --- 지도 모드 ---
-    const modeRef=ref(db,"location/settings/mode");
-    onValue(modeRef,snapshot=>{
-        const mode=snapshot.val();
-        if(mode===0) mapContainer.style.filter="none";
-        else if(mode===1) mapContainer.style.filter="invert(100%) hue-rotate(180deg) saturate(60%) brightness(80%) contrast(90%)";
-        else if(mode===2) mapContainer.style.filter="invert(100%) grayscale(100%) brightness(85%) contrast(95%)";
-    });
+  // 목적지 실시간 갱신
+  const destRef = ref(db, "location/destination");
+  onValue(destRef, (snapshot) => {
+    const dest = snapshot.val();
 
-    // --- 내 위치 실시간 ---
-    const locRef=ref(db,"location/current");
-    onValue(locRef,snapshot=>{
-        const data=snapshot.val();
-        if(!data) return;
-        const pos=new kakao.maps.LatLng(data.lat,data.lng);
-        createMarker(pos);
-        map.setCenter(pos);
-        updateAddress(pos);
+    if (!dest) {
+      if (destMarkerEl) { destMarkerEl.remove(); destMarkerEl = null; }
+      currentPathLatLngs = [];
+      renderPath();
+      distanceDiv.style.display = 'none';
+      return;
+    }
 
-        if(destinationMarkerDiv){
-            const destPos=destinationMarkerDiv.pos;
-            if(!lastPosition||getDistance(pos,lastPosition)>5){
-                drawRealRoute(pos,destPos);
-                lastPosition=pos;
-            }
-        }
-    });
+    const destPos = new kakao.maps.LatLng(dest.lat, dest.lng);
+    ensureDestMarker();
+    destMarkerEl._latlng = destPos;
+    placeMarker(destMarkerEl, destPos);
 
-    // --- 목적지 실시간 ---
-    const destRef=ref(db,"location/destination");
-    onValue(destRef,snapshot=>{
-        const dest=snapshot.val();
-        if(!dest){
-            if(destinationMarkerDiv) destinationMarkerDiv.style.display='none';
-            if(routeSVG) routeSVG.style.display='none';
-            if(distanceDiv) distanceDiv.style.display='none';
-            return;
-        }
-        const destPos=new kakao.maps.LatLng(dest.lat,dest.lng);
-        createDestinationMarker(destPos);
-        if(markerDiv) drawRealRoute(markerDiv.pos,destPos);
-        lastPosition=markerDiv?markerDiv.pos:null;
-    });
+    if (myMarkerEl && myMarkerEl._latlng) {
+      drawRealRoute(myMarkerEl._latlng, destPos);
+    }
+    lastPosition = myMarkerEl ? myMarkerEl._latlng : null;
+  });
 
-    // --- 클릭/더블클릭 ---
-    let clickTimeout=null;
-    kakao.maps.event.addListener(map,'click',function(mouseEvent){
-        if(clickTimeout) return;
-        clickTimeout=setTimeout(()=>{
-            clickTimeout=null;
-            const clickPos=mouseEvent.latLng;
-            const destRef=ref(db,"location/destination");
-            if(destinationMarkerDiv){
-                set(destRef,null);
-                if(distanceDiv) distanceDiv.style.display='none';
-            }else set(destRef,{lat:clickPos.getLat(),lng:clickPos.getLng()});
-        },250);
-    });
-    kakao.maps.event.addListener(map,'dblclick',function(){if(clickTimeout){clearTimeout(clickTimeout);clickTimeout=null;}});
-    
-    window.addEventListener('resize',()=>{
-        refreshAddressText(currentAddress);
-        updateDistanceUnitOnResize();
-    });
+  // 윈도우 리사이즈
+  window.addEventListener('resize', () => {
+    kakao.maps.event.trigger(map, 'resize');
+    refreshAddressText();
+    updateDistanceUnitOnResize();
+  });
 };
 </script>
 <style>
-body{margin:0;padding:0;min-height:100vh;position:relative;}
-#map{width:400px;height:400px;position:absolute;top:0;left:0;}
+  html, body { margin:0; padding:0; height:100%; }
+  /* 랩: 지도 + 오버레이를 포개기 위한 기준 레이어 */
+  #wrap {
+    position: absolute; top: 0; right: 0;
+    width: 200px; height: 200px;
+    border: 0; border-radius: 0px;
+    overflow: hidden;  /* 내부 레이어가 튀어나오지 않게 */
+  }
+  /* 지도(타일) 전용 레이어: 여기만 filter 적용 */
+  #map {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    z-index: 0;             /* 아래쪽 */
+    will-change: filter;
+  }
+  /* 오버레이 전용 레이어: 필터 영향 없음 */
+  #overlay {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    z-index: 1;             /* 지도 위 */
+    pointer-events: none;   /* 클릭은 지도에만 전달 */
+  }
 </style>
 </head>
 <body>
-5<div id="map"></div>
+  <div id="wrap">
+    <div id="map"></div>
+    <div id="overlay"></div>
+  </div>
 </body>
 </html>
