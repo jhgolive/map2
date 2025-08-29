@@ -292,14 +292,36 @@ window.onload = function() {
     // ✅ 밝은흑백	filter: invert(90%) grayscale(100%) brightness(70%) contrast(80%);
     // ✅ 어두운흑백	filter: invert(100%) grayscale(100%) brightness(85%) contrast(95%);
     const modeRef = ref(db, "location/settings/mode");
+    // ✅ 지도 모드 필터 적용 (location/settings/mode)
     onValue(modeRef, (snapshot) => {
         const mode = snapshot.val();
+    
         if (mode === 0) {
+            // 기본 모드
             container.style.filter = "none";
+    
+            // 원래 색상
+            if (marker) marker.getContent().firstChild.style.backgroundColor = 'red';
+            if (destinationMarker) destinationMarker.getContent().firstChild.style.backgroundColor = 'blue';
+            if (routeLine) routeLine.setOptions({ strokeColor: '#0066ff' });
+    
         } else if (mode === 1) {
+            // 다크모드 (약간 칼라)
             container.style.filter = "invert(100%) hue-rotate(180deg) saturate(60%) brightness(80%) contrast(90%)";
+    
+            // 색상 보정 (필터 반영 후에도 원래처럼 보이도록)
+            if (marker) marker.getContent().firstChild.style.backgroundColor = '#00ffff'; // 원래 red → 보정
+            if (destinationMarker) destinationMarker.getContent().firstChild.style.backgroundColor = '#ffcc00'; // 원래 blue → 보정
+            if (routeLine) routeLine.setOptions({ strokeColor: '#ff6600' }); // 원래 파랑 → 보정
+    
         } else if (mode === 2) {
+            // 흑백 다크모드
             container.style.filter = "invert(100%) grayscale(100%) brightness(85%) contrast(95%)";
+    
+            // 색상 보정
+            if (marker) marker.getContent().firstChild.style.backgroundColor = '#00ffff';
+            if (destinationMarker) destinationMarker.getContent().firstChild.style.backgroundColor = '#ffcc00';
+            if (routeLine) routeLine.setOptions({ strokeColor: '#ff6600' });
         }
     });
 
@@ -374,9 +396,10 @@ body {
 </style>
 </head>
 <body>
-<div id="map"></div>
+3<div id="map"></div>
 </body>
 </html>
+
 
 
 
