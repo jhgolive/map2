@@ -227,6 +227,10 @@ window.onload = function() {
     center: new kakao.maps.LatLng(37.5665, 126.9780),
     level: 4
   });
+  
+  map.setMapTypeId(kakao.maps.MapTypeId.ROADMAP);
+  mapDiv.style.filter = "invert(100%) grayscale(100%) brightness(85%) contrast(95%)";
+  if (addressDiv) addressDiv.style.color = '#fff';
 
   ['idle','center_changed','zoom_changed'].forEach(ev => {
     kakao.maps.event.addListener(map, ev, () => {
@@ -379,3 +383,4 @@ window.onload = function() {
   </div>
 </body>
 </html>
+
