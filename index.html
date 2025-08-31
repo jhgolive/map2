@@ -161,7 +161,7 @@ function updateDistanceUnitOnResize() {
 
 async function fetchRoute(start, end) {
   const REST_KEY = "bac1f5ced0d30c96b782458d968713fe";
-  const url = `https://apis-navi.kakaomobility.com/v1/directions?origin=${start.getLng()},${start.getLat()}&destination=${end.getLng()},${end.getLat()}&priority=SHORTEST`;
+  const url = `https://apis-navi.kakaomobility.com/v1/directions?origin=${start.getLng()},${start.getLat()}&destination=${end.getLng()},${end.getLat()}&priority=FASTEST`;
   const res = await fetch(url, { method:"GET", headers:{ Authorization:`KakaoAK ${REST_KEY}` }});
   return await res.json();
 }
@@ -388,6 +388,7 @@ window.onload = function() {
   </div>
 </body>
 </html>
+
 
 
 
