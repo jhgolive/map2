@@ -227,7 +227,7 @@ function drawStraightRoute(start, end) {
   const poly = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
   poly.setAttribute("points", `${s.x},${s.y} ${e.x},${e.y}`);
   poly.setAttribute("fill", "none");
-  poly.setAttribute("stroke", "#ff0000");
+  poly.setAttribute("stroke", "#0066ff");
   poly.setAttribute("stroke-width", "5");
   svg.appendChild(poly);
 
@@ -249,7 +249,7 @@ function drawOrthogonalRoute(start, end) {
   const poly = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
   poly.setAttribute("points", `${s.x},${s.y} ${mid.x},${mid.y} ${e.x},${e.y}`);
   poly.setAttribute("fill", "none");
-  poly.setAttribute("stroke", "#00cc00");
+  poly.setAttribute("stroke", "#0066ff");
   poly.setAttribute("stroke-width", "5");
   svg.appendChild(poly);
 
@@ -457,3 +457,4 @@ window.onload = function() {
   </div>
 </body>
 </html>
+
