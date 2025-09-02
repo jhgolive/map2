@@ -234,7 +234,9 @@ function drawStraightRoute(start, end) {
   // 거리 표시
   const dist = getDistance(start, end);
   distanceDiv.style.display = 'block';
-  distanceDiv.innerText = dist >= 1000 ? (dist/1000).toFixed(2) + " km" : dist.toFixed(1) + " m";
+  distanceDiv.innerHTML = dist >= 1000
+  ? (dist/1000).toFixed(2) + ' <span id="distanceUnit">km</span>'
+  : dist.toFixed(1) + ' <span id="distanceUnit">m</span>';
 }
 
 function drawOrthogonalRoute(start, end) {
@@ -257,7 +259,9 @@ function drawOrthogonalRoute(start, end) {
   const midLatLng = proj.coordsFromContainerPoint(new kakao.maps.Point(mid.x, mid.y));
   const dist = getDistance(start, midLatLng) + getDistance(midLatLng, end);
   distanceDiv.style.display = 'block';
-  distanceDiv.innerText = dist >= 1000 ? (dist/1000).toFixed(2) + " km" : dist.toFixed(1) + " m";
+  distanceDiv.innerHTML = dist >= 1000
+  ? (dist/1000).toFixed(2) + ' <span id="distanceUnit">km</span>'
+  : dist.toFixed(1) + ' <span id="distanceUnit">m</span>';
 }
 
 window.onload = function() {
@@ -461,5 +465,6 @@ window.onload = function() {
   </div>
 </body>
 </html>
+
 
 
