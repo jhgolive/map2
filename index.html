@@ -246,7 +246,7 @@ function drawOrthogonalRoute(start, end) {
   const e = proj.containerPointFromCoords(end);
 
   // L자 경로: 가로 → 세로 (또는 반대)
-  const mid = { x: s.x, y: e.y }; // 가로-세로 꺾기
+  const mid = { x: e.x, y: s.y }; // 가로-세로 꺾기
   
   const poly = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
   poly.setAttribute("points", `${s.x},${s.y} ${mid.x},${mid.y} ${e.x},${e.y}`);
@@ -465,6 +465,7 @@ window.onload = function() {
   </div>
 </body>
 </html>
+
 
 
 
