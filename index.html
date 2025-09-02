@@ -278,7 +278,11 @@ window.onload = function() {
     kakao.maps.event.addListener(map, ev, () => {
       if (myMarkerEl && myMarkerEl._latlng) placeMarker(myMarkerEl, myMarkerEl._latlng);
       if (destMarkerEl && destMarkerEl._latlng) placeMarker(destMarkerEl, destMarkerEl._latlng);
-      renderPath();
+      
+	  // renderPath() 대신 drawRoute 호출
+	    if (myMarkerEl && myMarkerEl._latlng && destMarkerEl && destMarkerEl._latlng) {
+	      drawRoute(myMarkerEl._latlng, destMarkerEl._latlng);
+	    }
       refreshAddressText();
       updateDistanceUnitOnResize();
     });
@@ -457,4 +461,5 @@ window.onload = function() {
   </div>
 </body>
 </html>
+
 
