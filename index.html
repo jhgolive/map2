@@ -218,6 +218,48 @@ function getDistance(pos1, pos2) {
   return R * c;
 }
 
+function drawStraightRoute(start, end) {
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+  const proj = map.getProjection();
+  const s = proj.containerPointFromCoords(start);
+  const e = proj.containerPointFromCoords(end);
+
+  const poly = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+  poly.setAttribute("points", `${s.x},${s.y} ${e.x},${e.y}`);
+  poly.setAttribute("fill", "none");
+  poly.setAttribute("stroke", "#ff0000");
+  poly.setAttribute("stroke-width", "5");
+  svg.appendChild(poly);
+
+  // 거리 표시
+  const dist = getDistance(start, end);
+  distanceDiv.style.display = 'block';
+  distanceDiv.innerText = dist >= 1000 ? (dist/1000).toFixed(2) + " km" : dist.toFixed(1) + " m";
+}
+
+function drawOrthogonalRoute(start, end) {
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+  const proj = map.getProjection();
+  const s = proj.containerPointFromCoords(start);
+  const e = proj.containerPointFromCoords(end);
+
+  // L자 경로: 가로 → 세로 (또는 반대)
+  const mid = { x: s.x, y: e.y }; // 가로-세로 꺾기
+  
+  const poly = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+  poly.setAttribute("points", `${s.x},${s.y} ${mid.x},${mid.y} ${e.x},${e.y}`);
+  poly.setAttribute("fill", "none");
+  poly.setAttribute("stroke", "#00cc00");
+  poly.setAttribute("stroke-width", "5");
+  svg.appendChild(poly);
+
+  // 거리 계산 (두 구간 합산)
+  const midLatLng = proj.coordsFromContainerPoint(new kakao.maps.Point(mid.x, mid.y));
+  const dist = getDistance(start, midLatLng) + getDistance(midLatLng, end);
+  distanceDiv.style.display = 'block';
+  distanceDiv.innerText = dist >= 1000 ? (dist/1000).toFixed(2) + " km" : dist.toFixed(1) + " m";
+}
+
 window.onload = function() {
   const wrap = document.getElementById('wrap');
   const mapDiv = document.getElementById('map');      
@@ -259,7 +301,7 @@ window.onload = function() {
     if (destMarkerEl && destMarkerEl._latlng) {
       const destPos = destMarkerEl._latlng;
       if (!lastPosition || getDistance(pos, lastPosition) > 5) {
-        drawRealRoute(pos, destPos);
+        drawRoute(pos, destPos);
         lastPosition = pos;
       }
     }
@@ -306,6 +348,33 @@ window.onload = function() {
       if (addressDiv) addressDiv.style.color = '#fff';
     }
   });
+  
+  let currentRouteMode = 0; // 0=기존경로, 1=수평/수직만, 2=직선
+	const routeModeRef = ref(db, "location/settings/routeMode");
+	onValue(routeModeRef, (snapshot) => {
+	  const mode = snapshot.val();
+	  if (mode !== null) {
+	    currentRouteMode = mode;
+	    if (myMarkerEl && myMarkerEl._latlng && destMarkerEl && destMarkerEl._latlng) {
+	      drawRoute(myMarkerEl._latlng, destMarkerEl._latlng);
+	    }
+	  }
+	});
+	
+	function drawRoute(start, end) {
+	  if (currentRouteMode === 0) {
+	    // 0 = 카카오 내비 API 실제 경로
+	    drawRealRoute(start, end);
+	
+	  } else if (currentRouteMode === 1) {
+	    // 1 = 대각선 없는 수평/수직 경로 (L자 형태)
+	    drawOrthogonalRoute(start, end);
+	
+	  } else if (currentRouteMode === 2) {
+	    // 2 = 두 점을 직선으로 연결
+	    drawStraightRoute(start, end);
+	  }
+	}
 
   // 지도 클릭 이벤트: 목적지 설정
   let clickTimeout = null;
@@ -346,7 +415,7 @@ window.onload = function() {
     destMarkerEl._latlng = destPos;
     placeMarker(destMarkerEl, destPos);
     if (myMarkerEl && myMarkerEl._latlng) {
-      drawRealRoute(myMarkerEl._latlng, destPos);
+      drawRoute(myMarkerEl._latlng, destPos);
     }
     lastPosition = myMarkerEl ? myMarkerEl._latlng : null;
   });
@@ -388,8 +457,3 @@ window.onload = function() {
   </div>
 </body>
 </html>
-
-
-
-
-
