@@ -109,7 +109,7 @@ function createDiamond(color) {
   containerDiv.style.position = 'absolute';
   containerDiv.style.width = '40px';
   containerDiv.style.height = '45px';
-  containerDiv.style.transform = 'translate(-50%, -90%)'; 
+  containerDiv.style.transform = 'translate(-50%, -95%)'; 
   containerDiv.style.zIndex = '2';
   containerDiv.style.pointerEvents = 'none';
 
@@ -125,7 +125,7 @@ function createDiamond(color) {
   ellipse.setAttribute("rx","19");   // 가로 반지름
   ellipse.setAttribute("ry","6");    // 세로 반지름
   ellipse.setAttribute("fill","none");              // 내부 채우기 없음
-  ellipse.setAttribute("stroke","rgba(0,0,0,0.5)"); // 테두리 색
+  ellipse.setAttribute("stroke","#000000"); // 테두리 색
   ellipse.setAttribute("stroke-width","1");       // 테두리 두께
   svg.appendChild(ellipse);
 
@@ -481,6 +481,7 @@ window.onload = function() {
   </div>
 </body>
 </html>
+
 
 
 
