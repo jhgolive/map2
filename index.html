@@ -35,6 +35,8 @@ let currentAddress = {city:'', district:'', neighborhood:''};
 
 const geocoder = new kakao.maps.services.Geocoder();
 
+let currentMode = 0; // 기본모드
+
 // ===================
 // 오버레이 루트 생성 함수
 // ===================
@@ -351,7 +353,6 @@ window.onload = function() {
     }
   });
 
-  let currentMode = 0; // 기본모드
   // 지도 모드 수신
   const modeRef = ref(db, "location/settings/mode");
   onValue(modeRef, (snapshot) => {
