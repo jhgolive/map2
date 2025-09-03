@@ -236,7 +236,7 @@ function drawStraightRoute(start, end) {
   distanceDiv.style.display = 'block';
   distanceDiv.innerHTML = dist >= 1000
   ? (dist/1000).toFixed(2) + ' <span id="distanceUnit">km</span>'
-  : dist.toFixed(1) + ' <span id="distanceUnit">m</span>';
+  : Math.round(dist) + ' <span id="distanceUnit">m</span>';
 }
 
 function drawOrthogonalRoute(start, end) {
@@ -261,7 +261,7 @@ function drawOrthogonalRoute(start, end) {
   distanceDiv.style.display = 'block';
   distanceDiv.innerHTML = dist >= 1000
   ? (dist/1000).toFixed(2) + ' <span id="distanceUnit">km</span>'
-  : dist.toFixed(1) + ' <span id="distanceUnit">m</span>';
+  : Math.round(dist) + ' <span id="distanceUnit">m</span>';
 }
 
 window.onload = function() {
@@ -465,6 +465,7 @@ window.onload = function() {
   </div>
 </body>
 </html>
+
 
 
 
