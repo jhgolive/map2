@@ -108,7 +108,7 @@ function createDiamond(color) {
   const containerDiv = document.createElement('div');
   containerDiv.style.position = 'absolute';
   containerDiv.style.width = '40px';
-  containerDiv.style.height = '50px';
+  containerDiv.style.height = '45px';
   containerDiv.style.transform = 'translate(-50%, -100%)'; 
   containerDiv.style.zIndex = '2';
   containerDiv.style.pointerEvents = 'none';
@@ -116,7 +116,7 @@ function createDiamond(color) {
   // SVG로 타원 + 다이아몬드 같이 그림
   const svg = document.createElementNS("http://www.w3.org/2000/svg","svg");
   svg.setAttribute("width","40");
-  svg.setAttribute("height","50");
+  svg.setAttribute("height","45");
 
   // 타원형 띠 (밑부분) - 테두리만
   const ellipse = document.createElementNS("http://www.w3.org/2000/svg","ellipse");
@@ -481,6 +481,7 @@ window.onload = function() {
   </div>
 </body>
 </html>
+
 
 
 
