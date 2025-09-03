@@ -386,16 +386,16 @@ window.onload = function() {
 	
 	function drawRoute(start, end) {
 	  if (currentRouteMode === 0) {
-	    // 0 = 카카오 내비 API 실제 경로
-	    drawRealRoute(start, end);
+		// 0 = 두 점을 직선으로 연결
+		drawStraightRoute(start, end);
 	
 	  } else if (currentRouteMode === 1) {
-	    // 1 = 대각선 없는 수평/수직 경로 (L자 형태)
-	    drawOrthogonalRoute(start, end);
+		// 1 = 대각선 없는 수평/수직 경로 (L자 형태)
+		drawOrthogonalRoute(start, end);
 	
 	  } else if (currentRouteMode === 2) {
-	    // 2 = 두 점을 직선으로 연결
-	    drawStraightRoute(start, end);
+		// 2 = 카카오 내비 API 실제 경로
+		drawRealRoute(start, end);
 	  }
 	}
 
@@ -480,22 +480,3 @@ window.onload = function() {
   </div>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
