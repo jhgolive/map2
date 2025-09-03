@@ -104,7 +104,7 @@ function updateAddress(latlng) {
   });
 }
 
-function createDiamond(color) {
+function createDiamond(color, mode) {
   const containerDiv = document.createElement('div');
   containerDiv.style.position = 'absolute';
   containerDiv.style.width = '40px';
@@ -113,23 +113,24 @@ function createDiamond(color) {
   containerDiv.style.zIndex = '2';
   containerDiv.style.pointerEvents = 'none';
 
-  // SVG로 타원 + 다이아몬드 같이 그림
   const svg = document.createElementNS("http://www.w3.org/2000/svg","svg");
   svg.setAttribute("width","40");
   svg.setAttribute("height","45");
 
-  // 타원형 띠 (밑부분) - 테두리만, 마커 색상과 동일
+  // 모드에 따라 타원 테두리 색 결정
+  const ellipseColor = (mode === 1 || mode === 2) ? "#fff" : color;
+
   const ellipse = document.createElementNS("http://www.w3.org/2000/svg","ellipse");
   ellipse.setAttribute("cx","20");   
   ellipse.setAttribute("cy","38");   
   ellipse.setAttribute("rx","19");   
   ellipse.setAttribute("ry","6");    
   ellipse.setAttribute("fill","none");
-  ellipse.setAttribute("stroke", color);   // ← 마커 색상 따라감
+  ellipse.setAttribute("stroke", ellipseColor);
   ellipse.setAttribute("stroke-width","1");
   svg.appendChild(ellipse);
 
-  // 다이아몬드 본체
+  // 다이아몬드 본체는 여전히 마커 색상
   const diamond = document.createElementNS("http://www.w3.org/2000/svg","polygon");
   diamond.setAttribute("points","16,11 24,11 30,17 20,39 10,17");
   diamond.setAttribute("fill", color);
@@ -141,16 +142,17 @@ function createDiamond(color) {
 
 function ensureMyMarker() {
   if (!myMarkerEl) {
-    myMarkerEl = createDiamond('red');
+    myMarkerEl = createDiamond('red', currentMode);
     overlayRoot.appendChild(myMarkerEl);
   }
 }
 function ensureDestMarker() {
   if (!destMarkerEl) {
-    destMarkerEl = createDiamond('blue');
+    destMarkerEl = createDiamond('blue', currentMode);
     overlayRoot.appendChild(destMarkerEl);
   }
 }
+
 function placeMarker(el, latlng) {
   const proj = map.getProjection();
   const pt = proj.containerPointFromCoords(latlng);
@@ -349,9 +351,11 @@ window.onload = function() {
     }
   });
 
+  let currentMode = 0; // 기본모드
   // 지도 모드 수신
   const modeRef = ref(db, "location/settings/mode");
   onValue(modeRef, (snapshot) => {
+	currentMode = snapshot.val() ?? 0;
     const mode = snapshot.val();
     if (mode === 0) {
       map.setMapTypeId(kakao.maps.MapTypeId.ROADMAP);
@@ -481,6 +485,7 @@ window.onload = function() {
   </div>
 </body>
 </html>
+
 
 
 
