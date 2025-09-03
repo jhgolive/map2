@@ -118,13 +118,15 @@ function createDiamond(color) {
   svg.setAttribute("width","40");
   svg.setAttribute("height","50");
 
-  // 타원형 띠 (밑부분)
+  // 타원형 띠 (밑부분) - 테두리만
   const ellipse = document.createElementNS("http://www.w3.org/2000/svg","ellipse");
   ellipse.setAttribute("cx","20");   // 중심 x
-  ellipse.setAttribute("cy","42");   // 중심 y (아래쪽)
+  ellipse.setAttribute("cy","42");   // 중심 y
   ellipse.setAttribute("rx","10");   // 가로 반지름
   ellipse.setAttribute("ry","4");    // 세로 반지름
-  ellipse.setAttribute("fill","rgba(0,0,0,0.3)"); // 반투명 검정 그림자 느낌
+  ellipse.setAttribute("fill","none");              // 내부 채우기 없음
+  ellipse.setAttribute("stroke","rgba(0,0,0,0.5)"); // 테두리 색
+  ellipse.setAttribute("stroke-width","1");       // 테두리 두께
   svg.appendChild(ellipse);
 
   // 다이아몬드 본체
@@ -479,6 +481,7 @@ window.onload = function() {
   </div>
 </body>
 </html>
+
 
 
 
