@@ -164,6 +164,7 @@ function updateDistanceTextByData(data) {
   const distanceText = dist >= 1000 ? (dist/1000).toFixed(2) : dist;
   const unit = dist >= 1000 ? 'km' : 'm';
   distanceDiv.innerHTML = `${distanceText} <span id="distanceUnit">${unit}</span>`;
+  updateDistanceUnitOnResize();
 }
 function updateDistanceUnitOnResize() {
   if (!distanceDiv) return;
@@ -252,6 +253,7 @@ function drawStraightRoute(start, end) {
   distanceDiv.innerHTML = dist >= 1000
   ? (dist/1000).toFixed(2) + ' <span id="distanceUnit">km</span>'
   : Math.round(dist) + ' <span id="distanceUnit">m</span>';
+  updateDistanceUnitOnResize();
 }
 
 function drawOrthogonalRoute(start, end) {
@@ -277,6 +279,7 @@ function drawOrthogonalRoute(start, end) {
   distanceDiv.innerHTML = dist >= 1000
   ? (dist/1000).toFixed(2) + ' <span id="distanceUnit">km</span>'
   : Math.round(dist) + ' <span id="distanceUnit">m</span>';
+  updateDistanceUnitOnResize();
 }
 
 window.onload = function() {
@@ -400,8 +403,6 @@ window.onload = function() {
 		// 2 = 카카오 내비 API 실제 경로
 		drawRealRoute(start, end);
 	  }
-	  // ✅ 거리 텍스트 단위 보정
-  	  updateDistanceUnitOnResize();
 	}
 
   // 지도 클릭 이벤트: 목적지 설정
@@ -485,6 +486,7 @@ window.onload = function() {
   </div>
 </body>
 </html>
+
 
 
 
