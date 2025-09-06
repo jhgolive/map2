@@ -356,6 +356,7 @@ window.onload = function() {
       map.setMapTypeId(kakao.maps.MapTypeId.ROADMAP);
       mapDiv.style.filter = "none";
       if (addressDiv) addressDiv.style.color = '#000';
+	  if (distanceDiv) distanceDiv.style.color = '#0066ff'; // 기본 파랑
     } else if (mode === 1) {
       map.setMapTypeId(kakao.maps.MapTypeId.ROADMAP);
       //약칼라			filter: invert(100%) sepia(50%) hue-rotate(200deg) brightness(75%) contrast(85%);
@@ -365,10 +366,12 @@ window.onload = function() {
       //어두운흑백	filter: invert(100%) grayscale(100%) brightness(85%) contrast(95%);
       mapDiv.style.filter = "invert(100%) grayscale(100%) brightness(85%) contrast(95%)";
       if (addressDiv) addressDiv.style.color = '#fff';
+	  if (distanceDiv) distanceDiv.style.color = '#0066ff'; // 기본 파랑
     } else if (mode === 2) {
       map.setMapTypeId(kakao.maps.MapTypeId.HYBRID);
       mapDiv.style.filter = "none"; 
       if (addressDiv) addressDiv.style.color = '#fff';
+	  if (distanceDiv) distanceDiv.style.color = '#fff';   // ✅ 여기 추가
     }
   });
   
@@ -480,6 +483,7 @@ window.onload = function() {
   </div>
 </body>
 </html>
+
 
 
 
