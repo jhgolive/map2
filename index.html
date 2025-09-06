@@ -400,6 +400,8 @@ window.onload = function() {
 		// 2 = 카카오 내비 API 실제 경로
 		drawRealRoute(start, end);
 	  }
+	  // ✅ 거리 텍스트 단위 보정
+  	  updateDistanceUnitOnResize();
 	}
 
   // 지도 클릭 이벤트: 목적지 설정
@@ -483,6 +485,7 @@ window.onload = function() {
   </div>
 </body>
 </html>
+
 
 
 
